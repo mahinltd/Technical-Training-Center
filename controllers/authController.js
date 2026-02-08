@@ -46,7 +46,7 @@ const registerUser = async (req, res) => {
 
         if (user) {
             const verificationLink =
-                `https://api.technicalcomputer.tech/api/users/verify-email?token=${verifyToken}`;
+                `https://technicalcomputer.tech/verify-email?token=${verifyToken}`;
 
             await sendEmail({
                 to: user.email,
@@ -322,7 +322,7 @@ const sendContactMessage = async (req, res) => {
         }
 
         // 🔴 IMPORTANT: This is where the email goes (Admin Email)
-        const adminEmail = "info@technicalcomputer.tech"; 
+        const adminEmail = "info.mahin.ltd@gmail.com"; 
 
         await sendEmail({
             to: adminEmail,
