@@ -1,5 +1,7 @@
 const Admission = require("../models/Admission");
 const Course = require("../models/Course");
+const User = require("../models/User"); // ✅ Added for Admin lookup
+const sendEmail = require("../utils/emailService"); // ✅ Added for Email Service
 
 /**
  * @desc    Apply for a course
@@ -88,7 +90,48 @@ const applyForAdmission = async (req, res) => {
       status: "pending",
     });
 
+    // ✅ SAVE TO DATABASE
     const createdAdmission = await admission.save();
+
+    // ---------------------------------------------------------
+    // 📧 EMAIL NOTIFICATION SYSTEM (Only runs if save is success)
+    // ---------------------------------------------------------
+    try {
+      // 1. Find all admins
+      const admins = await User.find({ role: "admin" });
+
+      if (admins.length > 0) {
+        const emailSubject = `New Admission Request: ${course.title}`;
+        const emailBody = `
+            <h3>New Admission Application Received</h3>
+            <p><strong>Student Name:</strong> ${req.user.name}</p>
+            <p><strong>Student ID:</strong> ${req.user.studentId || "N/A"}</p>
+            <p><strong>Course:</strong> ${course.title}</p>
+            <p><strong>Session:</strong> ${session}</p>
+            <p><strong>Guardian Phone:</strong> ${guardianPhone}</p>
+            <hr/>
+            <p>Please login to the Admin Dashboard to review and approve this application.</p>
+        `;
+
+        // 2. Send emails in parallel
+        await Promise.all(
+          admins.map((admin) =>
+            sendEmail({
+              to: admin.email,
+              subject: emailSubject,
+              html: emailBody,
+            })
+          )
+        );
+
+        console.log(`✅ Admission notification sent to ${admins.length} admins.`);
+      }
+    } catch (emailError) {
+      // Log error but DO NOT fail the request, as admission is already saved
+      console.error("⚠️ Failed to send admin notification emails:", emailError.message);
+    }
+    // ---------------------------------------------------------
+
     res.status(201).json(createdAdmission);
   } catch (error) {
     console.error("Admission Error:", error);
