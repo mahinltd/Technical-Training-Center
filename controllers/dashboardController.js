@@ -37,6 +37,7 @@ const getStudentDashboard = async (req, res) => {
                 name: req.user.name,
                 studentId: req.user.studentId,
                 email: req.user.email,
+                phone: req.user.phone,
                 photoUrl: req.user.avatar || ""
             },
             enrolledCourses: dashboardData
