@@ -12,13 +12,14 @@ const protect = async (req, res, next) => {
     req.headers.authorization.startsWith("Bearer")
   ) {
     try {
-      // Extract token
+      // 1. Extract token
       token = req.headers.authorization.split(" ")[1];
 
-      // Verify token
+      // 2. Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Get user from token
+      // 3. Get user from token (exclude password)
+      // Note: We use 'decoded.id' assuming your generateToken function uses 'id'
       const user = await User.findById(decoded.id).select("-password");
 
       if (!user) {
@@ -28,18 +29,18 @@ const protect = async (req, res, next) => {
       }
 
       req.user = user;
-      return next(); // 🔥 VERY IMPORTANT
+      return next(); // ✅ Proceed to controller
     } catch (error) {
-      console.error("Auth error:", error);
+      console.error("Auth Middleware Error:", error.message);
       return res.status(401).json({
         message: "Not authorized, token failed",
       });
     }
   }
 
-  // No token
+  // If no token found in headers
   return res.status(401).json({
-    message: "Not authorized, no token",
+    message: "Not authorized, no token provided",
   });
 };
 
@@ -47,12 +48,13 @@ const protect = async (req, res, next) => {
  * @desc    Admin only middleware
  */
 const admin = (req, res, next) => {
+  // Check if user exists and role is strictly 'admin'
   if (req.user && req.user.role === "admin") {
     return next();
   }
 
   return res.status(403).json({
-    message: "Not authorized as an admin",
+    message: "Access denied. Admins only.",
   });
 };
 
