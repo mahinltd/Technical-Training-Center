@@ -5,8 +5,9 @@ const productSchema = new mongoose.Schema({
     titleBn: { type: String, default: "" },
     type: { 
         type: String, 
-        enum: ['AI', 'PSD', 'Template', 'Other'], 
-        required: true 
+        // ✅ আপডেটেড লিস্ট: সব ধরনের ফাইল সাপোর্ট করবে
+        enum: ['PDF', 'Doc', 'Software', 'AI', 'PSD', 'Template', 'Other'], 
+        required: true  
     },
     price: { type: Number, required: true },
     transactionFee: { type: Number, default: 30 },
