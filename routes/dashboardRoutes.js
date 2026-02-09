@@ -6,5 +6,6 @@ const { protect } = require('../middleware/authMiddleware');
 // All dashboard routes are protected
 router.get('/student', protect, getStudentDashboard);
 router.get('/receipt/:paymentId', protect, getReceiptData);
+router.get('/admin/stats', protect, admin, getAdminStats);
 
 module.exports = router;
