@@ -45,8 +45,7 @@ const registerUser = async (req, res) => {
         });
 
         if (user) {
-            const verificationLink =
-                `https://technicalcomputer.tech/verify-email?token=${verifyToken}`;
+            const verificationLink = `https://technicalcomputer.tech/verify-email?token=${verifyToken}`;
 
             await sendEmail({
                 to: user.email,
@@ -92,6 +91,7 @@ const loginUser = async (req, res) => {
                 studentId: user.studentId,
                 name: user.name,
                 email: user.email,
+                phone: user.phone, // ✅ FIXED: Phone added here
                 role: user.role,
                 isVerified: user.isVerified,
                 avatar: user.avatar,
@@ -108,20 +108,24 @@ const loginUser = async (req, res) => {
 // @desc    Get user profile
 // @route   GET /api/users/profile
 const getUserProfile = async (req, res) => {
-    const user = await User.findById(req.user._id);
-    if (user) {
-        res.json({
-            _id: user._id,
-            studentId: user.studentId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            phone: user.phone,
-            avatar: user.avatar,
-            isVerified: user.isVerified
-        });
-    } else {
-        res.status(404).json({ message: 'User not found' });
+    try {
+        const user = await User.findById(req.user._id);
+        if (user) {
+            res.json({
+                _id: user._id,
+                studentId: user.studentId,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                phone: user.phone, // ✅ FIXED: Phone added here
+                avatar: user.avatar,
+                isVerified: user.isVerified
+            });
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -148,7 +152,7 @@ const updateUserProfile = async (req, res) => {
                 name: updatedUser.name,
                 email: updatedUser.email,
                 role: updatedUser.role,
-                phone: updatedUser.phone,
+                phone: updatedUser.phone, // ✅ FIXED: Phone added here
                 avatar: updatedUser.avatar,
                 token: generateToken(updatedUser._id)
             });
@@ -308,11 +312,8 @@ const updateUserRole = async (req, res) => {
     }
 };
 
-// ==========================================
-// ✅ NEW: CONTACT MESSAGE FUNCTION ADDED
 // @desc    Send Contact Message to Admin
 // @route   POST /api/users/contact
-// ==========================================
 const sendContactMessage = async (req, res) => {
     const { name, email, message } = req.body;
 
@@ -321,7 +322,6 @@ const sendContactMessage = async (req, res) => {
             return res.status(400).json({ message: "All fields are required" });
         }
 
-        // 🔴 IMPORTANT: This is where the email goes (Admin Email)
         const adminEmail = "info.mahin.ltd@gmail.com"; 
 
         await sendEmail({
@@ -349,7 +349,6 @@ const sendContactMessage = async (req, res) => {
     }
 };
 
-// ✅ EXPORT UPDATED
 module.exports = {
     registerUser,
     loginUser,
@@ -362,5 +361,5 @@ module.exports = {
     getAllUsers,
     deleteUser,
     updateUserRole,
-    sendContactMessage // <--- Added here
+    sendContactMessage
 };
