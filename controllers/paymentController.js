@@ -1,5 +1,7 @@
 const Payment = require('../models/Payment');
 const Admission = require('../models/Admission');
+const Product = require('../models/Product');
+const Course = require('../models/Course');
 const PaymentMethod = require('../models/PaymentMethod'); // <--- Import New Model
 const User = require('../models/User');
 const sendEmail = require('../utils/emailService');
@@ -210,13 +212,72 @@ const rejectPayment = async (req, res) => {
     }
 };
 
+const buildSourceDetails = async (payment) => {
+    try {
+        if (payment.sourceType === 'admission') {
+            const admission = await Admission.findById(payment.sourceId)
+                .populate('course', 'title fee duration');
+            if (!admission) return null;
+            return {
+                type: 'admission',
+                title: admission.course?.title || 'Admission',
+                fee: admission.course?.fee,
+                duration: admission.course?.duration,
+                session: admission.session,
+                status: admission.status
+            };
+        }
+
+        if (payment.sourceType === 'course') {
+            const course = await Course.findById(payment.sourceId)
+                .select('title fee duration type');
+            if (!course) return null;
+            return {
+                type: 'course',
+                title: course.title,
+                fee: course.fee,
+                duration: course.duration,
+                courseType: course.type
+            };
+        }
+
+        if (payment.sourceType === 'product') {
+            const product = await Product.findById(payment.sourceId)
+                .select('title price type description logoKey thumbnailUrl');
+            if (!product) return null;
+            return {
+                type: 'product',
+                title: product.title,
+                price: product.price,
+                productType: product.type,
+                description: product.description,
+                logoKey: product.logoKey,
+                thumbnailUrl: product.thumbnailUrl
+            };
+        }
+    } catch (error) {
+        console.error('Source detail fetch failed', error.message);
+    }
+
+    return null;
+};
+
 // @desc    Get All Payments (Admin)
 const getAllPayments = async (req, res) => {
     try {
         const payments = await Payment.find({})
-            .populate('user', 'name studentId')
+            .populate('user', 'name studentId email phone')
             .sort({ createdAt: -1 });
-        res.json(payments);
+
+        const enriched = await Promise.all(
+            payments.map(async (paymentDoc) => {
+                const payment = paymentDoc.toObject();
+                payment.sourceDetails = await buildSourceDetails(payment);
+                return payment;
+            })
+        );
+
+        res.json(enriched);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
