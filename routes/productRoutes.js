@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { 
     getProducts, 
-    createProduct, 
+    getProductsAdmin,
+    createProduct,
+    updateProduct,
     downloadProduct, 
     deleteProduct 
 } = require('../controllers/productController');
@@ -12,9 +14,13 @@ router.route('/')
     .get(getProducts) // Public view
     .post(protect, admin, createProduct); // Admin create
 
-router.route('/:id')
-    .delete(protect, admin, deleteProduct); // Admin delete
+router.route('/admin')
+    .get(protect, admin, getProductsAdmin);
 
 router.get('/download/:id', protect, downloadProduct); // Secure download
+
+router.route('/:id')
+    .put(protect, admin, updateProduct)
+    .delete(protect, admin, deleteProduct); // Admin delete
 
 module.exports = router;
