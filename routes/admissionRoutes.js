@@ -4,19 +4,18 @@ const {
     applyForAdmission,
     getMyAdmissions,
     getAllAdmissions,
-    getAdmissionById // ✅ Import Added
+    getAdmissionById // ✅ IMPORT ADDED
 } = require('../controllers/admissionController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 router.route('/')
-    .post(protect, applyForAdmission) 
-    .get(protect, admin, getAllAdmissions); 
+    .post(protect, applyForAdmission) // Student applies
+    .get(protect, admin, getAllAdmissions); // Admin views all
 
 router.route('/my')
-    .get(protect, getMyAdmissions); 
+    .get(protect, getMyAdmissions); // Student views own history
 
-// ✅ NEW ROUTE: Get single admission by ID
-// এটি যোগ করুন
+// ✅ NEW ROUTE ADDED: Get single admission by ID
 router.route('/:id')
     .get(protect, getAdmissionById);
 
