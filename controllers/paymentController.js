@@ -75,6 +75,12 @@ const createPayment = async (req, res) => {
     let finalSourceId = sourceId || admissionId;
     let amount = 0;
     let itemName = "Unknown Item";
+    const allowedMethods = ['bkash', 'nagad', 'rocket', 'offline'];
+    const normalizedMethod = paymentMethod?.toLowerCase();
+
+    if (!normalizedMethod || !allowedMethods.includes(normalizedMethod)) {
+        return res.status(400).json({ message: 'Invalid payment method selection' });
+    }
 
     try {
         if (finalSourceType === 'admission') {
@@ -102,7 +108,7 @@ const createPayment = async (req, res) => {
             amount: amount,
             transactionFee: trxFee,
             totalAmount: total,
-            paymentMethod,
+            paymentMethod: normalizedMethod,
             senderMobile,
             transactionId,
             status: 'pending'
