@@ -3,15 +3,21 @@ const router = express.Router();
 const {
     applyForAdmission,
     getMyAdmissions,
-    getAllAdmissions
+    getAllAdmissions,
+    getAdmissionById // ✅ Import Added
 } = require('../controllers/admissionController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 router.route('/')
-    .post(protect, applyForAdmission) // Student applies
-    .get(protect, admin, getAllAdmissions); // Admin views all
+    .post(protect, applyForAdmission) 
+    .get(protect, admin, getAllAdmissions); 
 
 router.route('/my')
-    .get(protect, getMyAdmissions); // Student views own history
+    .get(protect, getMyAdmissions); 
+
+// ✅ NEW ROUTE: Get single admission by ID
+// এটি যোগ করুন
+router.route('/:id')
+    .get(protect, getAdmissionById);
 
 module.exports = router;
