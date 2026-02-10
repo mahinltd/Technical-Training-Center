@@ -9,6 +9,11 @@ const productSchema = new mongoose.Schema({
         enum: ['PDF', 'Doc', 'Software', 'AI', 'PSD', 'Template', 'Other'], 
         required: true  
     },
+    logoKey: {
+        type: String,
+        enum: ['photoshop', 'illustrator', 'msword', 'excel', 'powerpoint', 'autocad', 'office', 'graphics', 'cv', 'template', 'software', 'generic'],
+        default: 'generic'
+    },
     price: { type: Number, required: true },
     transactionFee: { type: Number, default: 30 },
     thumbnailUrl: { type: String, required: true }, // Preview Image
