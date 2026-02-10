@@ -9,7 +9,8 @@ const {
     // Import new controllers
     getPaymentMethods,
     addPaymentMethod,
-    deletePaymentMethod
+    deletePaymentMethod,
+    getMyProductDownloads
 } = require('../controllers/paymentController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -19,6 +20,9 @@ router.get('/methods', getPaymentMethods);
 // Admin Routes to manage numbers
 router.post('/methods', protect, admin, addPaymentMethod);
 router.delete('/methods/:id', protect, admin, deletePaymentMethod);
+
+// Student specific downloads
+router.get('/my/downloads', protect, getMyProductDownloads);
 
 // Existing Payment Routes
 router.route('/')
