@@ -93,6 +93,13 @@ const applyForAdmission = async (req, res) => {
     // ✅ SAVE TO DATABASE
     const createdAdmission = await admission.save();
 
+    // 🖼️ Sync profile avatar with the admission photo so the dashboard shows it immediately
+    try {
+      await User.findByIdAndUpdate(req.user._id, { avatar: photoUrl });
+    } catch (avatarError) {
+      console.error("⚠️ Failed to sync student avatar:", avatarError.message);
+    }
+
     // ---------------------------------------------------------
     // 📧 EMAIL NOTIFICATION SYSTEM
     // ---------------------------------------------------------
@@ -129,6 +136,19 @@ const applyForAdmission = async (req, res) => {
     res.status(201).json(createdAdmission);
   } catch (error) {
     console.error("Admission Error:", error);
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: "You have already applied for this course",
+      });
+    }
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        message: "Invalid course selected",
+      });
+    }
+
     res.status(500).json({
       message: "Admission submission failed",
       error: error.message,
