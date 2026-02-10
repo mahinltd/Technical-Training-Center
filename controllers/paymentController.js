@@ -298,6 +298,44 @@ const deletePayment = async (req, res) => {
     }
 };
 
+// @desc    List verified product purchases for a student
+// @route   GET /api/payments/my/downloads
+const getMyProductDownloads = async (req, res) => {
+    try {
+        const payments = await Payment.find({
+            user: req.user._id,
+            sourceType: 'product',
+            status: 'verified'
+        }).sort({ verifiedAt: -1, createdAt: -1 });
+
+        const downloads = await Promise.all(
+            payments.map(async (paymentDoc) => {
+                const product = await Product.findById(paymentDoc.sourceId)
+                    .select('title titleBn type logoKey price thumbnailUrl description isActive');
+                if (!product || !product.isActive) return null;
+
+                return {
+                    paymentId: paymentDoc._id,
+                    productId: product._id,
+                    title: product.title,
+                    titleBn: product.titleBn,
+                    type: product.type,
+                    logoKey: product.logoKey,
+                    price: product.price,
+                    thumbnailUrl: product.thumbnailUrl,
+                    description: product.description,
+                    verifiedAt: paymentDoc.verifiedAt,
+                    receiptNo: paymentDoc.receiptNo
+                };
+            })
+        );
+
+        res.json(downloads.filter(Boolean));
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = { 
     createPayment, 
     verifyPayment, 
@@ -307,5 +345,6 @@ module.exports = {
     // Exports new functions
     getPaymentMethods,
     addPaymentMethod,
-    deletePaymentMethod
+    deletePaymentMethod,
+    getMyProductDownloads
 };
