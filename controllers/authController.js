@@ -4,6 +4,36 @@ const sendEmail = require('../utils/emailService');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+const trimTrailingSlash = (url = '') => (url.endsWith('/') ? url.slice(0, -1) : url);
+const getFrontendBaseUrl = () => trimTrailingSlash(process.env.FRONTEND_URL || process.env.CLIENT_URL || 'https://technicalcomputer.tech');
+const buildVerificationLink = (token) => `${getFrontendBaseUrl()}/verify-email?token=${token}`;
+const buildResetLink = (token) => `${getFrontendBaseUrl()}/reset-password/${token}`;
+
+const buildVerificationHtml = ({ title, message, buttonLabel, buttonHref, isSuccess }) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${title}</title>
+    <style>
+        body { font-family: Arial, sans-serif; background:#f4f4f4; padding:40px; }
+        .card { max-width:480px; margin:0 auto; background:#fff; padding:32px; border-radius:12px; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.08); }
+        h1 { color:${isSuccess ? '#047857' : '#b91c1c'}; font-size:24px; margin-bottom:16px; }
+        p { color:#475569; font-size:16px; line-height:1.6; margin-bottom:28px; }
+        a.button { display:inline-block; padding:12px 24px; border-radius:8px; text-decoration:none; color:#fff; font-weight:600; background:${isSuccess ? '#047857' : '#b91c1c'}; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>${title}</h1>
+        <p>${message}</p>
+        <a class="button" href="${buttonHref}" target="_self">${buttonLabel}</a>
+    </div>
+</body>
+</html>
+`;
+
 // Utility to generate custom ID
 const generateStudentId = () => {
     const prefix = "TCTC";
@@ -45,7 +75,7 @@ const registerUser = async (req, res) => {
         });
 
         if (user) {
-            const verificationLink = `https://technicalcomputer.tech/verify-email?token=${verifyToken}`;
+            const verificationLink = buildVerificationLink(verifyToken);
 
             await sendEmail({
                 to: user.email,
@@ -168,17 +198,72 @@ const updateUserProfile = async (req, res) => {
 // @route   GET /api/users/verify-email
 const verifyEmail = async (req, res) => {
     const { token } = req.query;
+    const prefersJson = () => {
+        const acceptHeader = (req.headers.accept || '').toLowerCase();
+        return acceptHeader.includes('application/json') || acceptHeader.includes('text/json');
+    };
+
+    const sendResponse = (statusCode, jsonBody, htmlBody) => {
+        if (prefersJson()) {
+            return res.status(statusCode).json(jsonBody);
+        }
+        return res.status(statusCode).send(buildVerificationHtml({ ...htmlBody, isSuccess: statusCode >= 200 && statusCode < 400 }));
+    };
+
+    if (!token) {
+        return sendResponse(
+            400,
+            { success: false, message: 'Verification token is missing' },
+            {
+                title: 'Verification link missing',
+                message: 'We could not find a verification token in your request. Please request a new verification email.',
+                buttonLabel: 'Resend Email',
+                buttonHref: `${getFrontendBaseUrl()}/auth/resend-email`
+            }
+        );
+    }
+
     try {
         const user = await User.findOne({ verificationToken: token });
-        if (!user) return res.status(400).send('<h1>Invalid Token</h1>');
+        if (!user) {
+            return sendResponse(
+                400,
+                { success: false, message: 'Invalid or expired verification link' },
+                {
+                    title: 'Link expired or invalid',
+                    message: 'This verification link is no longer valid. Please request a fresh email to complete your registration.',
+                    buttonLabel: 'Request New Link',
+                    buttonHref: `${getFrontendBaseUrl()}/auth/resend-email`
+                }
+            );
+        }
 
         user.isVerified = true;
         user.verificationToken = undefined;
         await user.save();
 
-        res.send('<h1>Email Verified Successfully! ✅</h1>');
+        return sendResponse(
+            200,
+            { success: true, message: 'Email verified successfully' },
+            {
+                title: 'Email verified!',
+                message: 'Your account is now active. You can log in and start learning right away.',
+                buttonLabel: 'Go to Login',
+                buttonHref: `${getFrontendBaseUrl()}/auth`
+            }
+        );
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Verify email error:', error);
+        return sendResponse(
+            500,
+            { success: false, message: 'Failed to verify email. Please try again.' },
+            {
+                title: 'Something went wrong',
+                message: 'We could not verify your email due to a server error. Please try the link again in a moment or request a new email.',
+                buttonLabel: 'Back to Login',
+                buttonHref: `${getFrontendBaseUrl()}/auth`
+            }
+        );
     }
 };
 
@@ -220,8 +305,7 @@ const forgotPassword = async (req, res) => {
 
         await user.save();
 
-        const resetUrl =
-            `https://technicalcomputer.tech/reset-password/${resetToken}`;
+        const resetUrl = buildResetLink(resetToken);
 
         const message = `
             <h1>Password Reset</h1>
