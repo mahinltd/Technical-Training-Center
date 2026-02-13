@@ -77,11 +77,15 @@ const createPayment = async (req, res) => {
     let finalSourceId = sourceId || admissionId;
     let amount = 0;
     let itemName = "Unknown Item";
-    const allowedMethods = ['bkash', 'nagad', 'rocket', 'offline'];
+    const allowedMethods = ['bkash', 'nagad', 'rocket', 'offline', 'bank'];
     const normalizedMethod = paymentMethod?.toLowerCase();
 
     if (!normalizedMethod || !allowedMethods.includes(normalizedMethod)) {
         return res.status(400).json({ message: 'Invalid payment method selection' });
+    }
+
+    if (!finalSourceId) {
+        return res.status(400).json({ message: 'Missing payment source reference' });
     }
 
     try {
@@ -90,14 +94,30 @@ const createPayment = async (req, res) => {
             if (!admission) return res.status(404).json({ message: 'Admission not found' });
             amount = admission.course.fee;
             itemName = admission.course.title;
+        } else if (finalSourceType === 'course') {
+            const course = await Course.findById(finalSourceId);
+            if (!course) return res.status(404).json({ message: 'Course not found' });
+            amount = course.fee;
+            itemName = course.title;
+        } else if (finalSourceType === 'product') {
+            const product = await Product.findById(finalSourceId);
+            if (!product || !product.isActive) {
+                return res.status(404).json({ message: 'Product not found or inactive' });
+            }
+            amount = product.price;
+            itemName = product.title;
         } else {
-            amount = req.body.amount || 0; 
-            itemName = "Digital Product";
+            return res.status(400).json({ message: 'Unsupported payment source' });
         }
 
-        const existingPayment = await Payment.findOne({ sourceId: finalSourceId, status: { $in: ['pending', 'verified'] } });
+        const existingPayment = await Payment.findOne({
+            user: req.user._id,
+            sourceType: finalSourceType,
+            sourceId: finalSourceId,
+            status: { $in: ['pending', 'verified'] }
+        });
         if (existingPayment) {
-            return res.status(400).json({ message: 'Payment already submitted or verified' });
+            return res.status(400).json({ message: 'You already submitted a payment for this item' });
         }
 
         const trxFee = 30;
