@@ -77,7 +77,7 @@ const createPayment = async (req, res) => {
     let finalSourceId = sourceId || admissionId;
     let amount = 0;
     let itemName = "Unknown Item";
-    const allowedMethods = ['bkash', 'nagad', 'rocket', 'offline', 'bank'];
+    const allowedMethods = ['bkash', 'nagad', 'rocket', 'offline'];
     const normalizedMethod = paymentMethod?.toLowerCase();
 
     if (!normalizedMethod || !allowedMethods.includes(normalizedMethod)) {
@@ -86,6 +86,10 @@ const createPayment = async (req, res) => {
 
     if (!finalSourceId) {
         return res.status(400).json({ message: 'Missing payment source reference' });
+    }
+
+    if (normalizedMethod === 'offline' && finalSourceType !== 'admission') {
+        return res.status(400).json({ message: 'Offline payment is only available for admissions at the coaching center' });
     }
 
     try {
@@ -120,7 +124,7 @@ const createPayment = async (req, res) => {
             return res.status(400).json({ message: 'You already submitted a payment for this item' });
         }
 
-        const trxFee = 30;
+        const trxFee = (normalizedMethod === 'offline' && finalSourceType === 'admission') ? 20 : 30;
         const total = amount + trxFee;
 
         const payment = new Payment({
