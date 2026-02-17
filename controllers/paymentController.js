@@ -148,18 +148,26 @@ const createPayment = async (req, res) => {
             await admission.save();
         }
 
-        // Notify Admins
+        // Notify Admins with method-specific breakdown
         const admins = await User.find({ role: 'admin' });
+        const isOffline = normalizedMethod === 'offline';
         if (admins.length > 0) {
             await Promise.all(admins.map(async (admin) => {
                 await sendEmail({
                     to: admin.email,
-                    subject: `New Payment Received: ${transactionId}`,
+                    subject: `Payment Submitted (${normalizedMethod.toUpperCase()})`,
                     html: `
-                        <h2>New Payment Submitted!</h2>
-                        <p>Student: ${req.user.name}</p>
-                        <p>Amount: ${total} BDT</p>
-                        <p>TrxID: ${transactionId}</p>
+                        <h2 style="margin-bottom:8px;">New Payment Submitted</h2>
+                        <p style="margin:4px 0;"><strong>Student:</strong> ${req.user.name}</p>
+                        <p style="margin:4px 0;"><strong>Item:</strong> ${itemName}</p>
+                        <p style="margin:4px 0;"><strong>Method:</strong> ${normalizedMethod.toUpperCase()}</p>
+                        <table style="margin:12px 0;border-collapse:collapse;">
+                          <tr><td style="padding:4px 8px;border:1px solid #ddd;">Amount</td><td style="padding:4px 8px;border:1px solid #ddd;">৳${amount}</td></tr>
+                          <tr><td style="padding:4px 8px;border:1px solid #ddd;">Charge</td><td style="padding:4px 8px;border:1px solid #ddd;">৳${trxFee}${isOffline ? ' (offline service charge)' : ''}</td></tr>
+                          <tr><td style="padding:4px 8px;border:1px solid #ddd;font-weight:bold;">Total</td><td style="padding:4px 8px;border:1px solid #ddd;font-weight:bold;">৳${total}</td></tr>
+                        </table>
+                        <p style="margin:4px 0;"><strong>${isOffline ? 'Desk Note' : 'TrxID'}:</strong> ${transactionId || 'N/A'}</p>
+                        ${isOffline ? '<p style="color:#d35400;margin:8px 0 0;">Offline payment requires in-person confirmation at the coaching center. Please ensure tuition is collected and recorded.</p>' : ''}
                     `
                 });
             }));
@@ -188,6 +196,7 @@ const verifyPayment = async (req, res) => {
 
         let rollNo = "";
         let itemName = "Service";
+        const isOffline = payment.paymentMethod === 'offline';
 
         if (payment.sourceType === 'admission') {
             const admission = await Admission.findById(payment.sourceId).populate('course');
@@ -203,12 +212,19 @@ const verifyPayment = async (req, res) => {
         if (payment.user && payment.user.email) {
             await sendEmail({
                 to: payment.user.email,
-                subject: `Payment Receipt - ${payment.receiptNo}`,
+                subject: `Payment Receipt (${payment.paymentMethod.toUpperCase()}) - ${payment.receiptNo}`,
                 html: `
-                    <h2>Payment Verified!</h2>
-                    <p>Receipt No: ${payment.receiptNo}</p>
-                    <p>Item: ${itemName}</p>
-                    ${rollNo ? `<p>Roll No: ${rollNo}</p>` : ''}
+                    <h2 style="margin-bottom:8px;">Payment Verified</h2>
+                    <p style="margin:4px 0;"><strong>Receipt No:</strong> ${payment.receiptNo}</p>
+                    <p style="margin:4px 0;"><strong>Item:</strong> ${itemName}</p>
+                    <p style="margin:4px 0;"><strong>Method:</strong> ${payment.paymentMethod.toUpperCase()}</p>
+                    <table style="margin:12px 0;border-collapse:collapse;">
+                        <tr><td style="padding:4px 8px;border:1px solid #ddd;">Amount</td><td style="padding:4px 8px;border:1px solid #ddd;">৳${payment.amount}</td></tr>
+                        <tr><td style="padding:4px 8px;border:1px solid #ddd;">Charge</td><td style="padding:4px 8px;border:1px solid #ddd;">৳${payment.transactionFee}${isOffline ? ' (offline service charge)' : ''}</td></tr>
+                        <tr><td style="padding:4px 8px;border:1px solid #ddd;font-weight:bold;">Total Paid</td><td style="padding:4px 8px;border:1px solid #ddd;font-weight:bold;">৳${payment.totalAmount}</td></tr>
+                    </table>
+                    ${rollNo ? `<p style="margin:4px 0;"><strong>Roll No:</strong> ${rollNo}</p>` : ''}
+                    ${isOffline ? '<p style="color:#d35400;margin:8px 0 0;">Offline payment recorded. If only the ৳20 service charge was paid at the desk, please complete the remaining tuition at the coaching center.</p>' : ''}
                 `
             });
         }
